@@ -1,0 +1,203 @@
+name: Cross-Platform Builds (Windows, macOS, Android, Linux)
+
+on:
+  push:
+    branches: [ "master", "main", "flutter" ]
+    tags:
+      - 'v*' # Trigger release on version tags like v1.0.0
+  pull_request:
+    branches: [ "master", "main", "flutter" ]
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  build:
+    name: Build All Platforms
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        # We group target platforms by their required runner OS
+        include:
+          - os: windows-latest
+            target: windows
+            artifact_name_frontend: FrontEnd-Windows
+            artifact_path_frontend: ./FrontEnd/build/windows/x64/runner/Release
+            artifact_name_admin: Admin_Frontend-Windows
+            artifact_path_admin: ./admin_frontend/build/windows/x64/runner/Release
+
+          - os: macos-latest
+            target: macos
+            artifact_name_frontend: FrontEnd-macOS
+            artifact_path_frontend: ./FrontEnd/build/macos/Build/Products/Release/frontend.app
+            artifact_name_admin: Admin_Frontend-macOS
+            artifact_path_admin: ./admin_frontend/build/macos/Build/Products/Release/frontend.app
+
+          - os: ubuntu-latest
+            target: android
+            artifact_name_frontend: FrontEnd-APK
+            artifact_path_frontend: ./FrontEnd/build/app/outputs/flutter-apk/app-release.apk
+            artifact_name_admin: Admin_Frontend-APK
+            artifact_path_admin: ./admin_frontend/build/app/outputs/flutter-apk/app-release.apk
+
+          - os: ubuntu-latest
+            target: linux
+            artifact_name_frontend: FrontEnd-Linux-AppImage
+            artifact_path_frontend: ./Student_Frontend-x86_64.AppImage
+            artifact_name_admin: Admin_Frontend-Linux-AppImage
+            artifact_path_admin: ./Admin_Frontend-x86_64.AppImage
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java (for Android)
+        if: matrix.target == 'android'
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install Linux Dependencies (for Linux/AppImage)
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev
+          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage
+
+      - name: Enable Desktop Configurations
+        run: |
+          flutter config --enable-windows-desktop
+          flutter config --enable-macos-desktop
+          flutter config --enable-linux-desktop
+
+      - name: Build FrontEnd (${{ matrix.target }})
+        working-directory: ./FrontEnd
+        run: |
+          flutter create --platforms=${{ matrix.target }} .
+          flutter pub get
+          if [ "${{ matrix.target }}" == "android" ]; then
+            flutter build apk --release
+          else
+            flutter build ${{ matrix.target }} --release
+          fi
+        shell: bash
+
+      - name: Construct FrontEnd AppImage
+        if: matrix.target == 'linux'
+        run: |
+          # The script we used earlier
+          APP_DIR="Student_Frontend.AppDir"
+          mkdir -p "$APP_DIR/usr/bin"
+          mkdir -p "$APP_DIR/usr/share/applications"
+          mkdir -p "$APP_DIR/usr/share/icons/hicolor/256x256/apps"
+          cp -r ./FrontEnd/build/linux/x64/release/bundle/* "$APP_DIR/usr/bin/"
+          cat > "$APP_DIR/AppRun" <<EOF
+          #!/bin/sh
+          HERE="\$(dirname "\$(readlink -f "\${0}")")"
+          export LD_LIBRARY_PATH="\${HERE}/usr/bin/lib:\$LD_LIBRARY_PATH"
+          exec "\${HERE}/usr/bin/frontend" "\$@"
+          EOF
+          chmod +x "$APP_DIR/AppRun"
+          cat > "$APP_DIR/Student_Frontend.desktop" <<EOF
+          [Desktop Entry]
+          Name=Student_Frontend
+          Exec=frontend
+          Icon=Student_Frontend
+          Type=Application
+          Categories=Utility;
+          EOF
+          cp ./logo.png "$APP_DIR/Student_Frontend.png"
+          ln -s "Student_Frontend.png" "$APP_DIR/.DirIcon"
+          ./appimagetool-x86_64.AppImage "$APP_DIR" "./Student_Frontend-x86_64.AppImage" || ./appimagetool-x86_64.AppImage --appimage-extract-and-run "$APP_DIR" "./Student_Frontend-x86_64.AppImage"
+
+      - name: Upload FrontEnd Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name_frontend }}
+          path: ${{ matrix.artifact_path_frontend }}
+
+      - name: Build Admin FrontEnd (${{ matrix.target }})
+        working-directory: ./admin_frontend
+        run: |
+          flutter create --platforms=${{ matrix.target }} .
+          flutter pub get
+          if [ "${{ matrix.target }}" == "android" ]; then
+            flutter build apk --release
+          else
+            flutter build ${{ matrix.target }} --release
+          fi
+        shell: bash
+
+      - name: Construct Admin FrontEnd AppImage
+        if: matrix.target == 'linux'
+        run: |
+          APP_DIR="Admin_Frontend.AppDir"
+          mkdir -p "$APP_DIR/usr/bin"
+          mkdir -p "$APP_DIR/usr/share/applications"
+          mkdir -p "$APP_DIR/usr/share/icons/hicolor/256x256/apps"
+          cp -r ./admin_frontend/build/linux/x64/release/bundle/* "$APP_DIR/usr/bin/"
+          cat > "$APP_DIR/AppRun" <<EOF
+          #!/bin/sh
+          HERE="\$(dirname "\$(readlink -f "\${0}")")"
+          export LD_LIBRARY_PATH="\${HERE}/usr/bin/lib:\$LD_LIBRARY_PATH"
+          exec "\${HERE}/usr/bin/frontend" "\$@"
+          EOF
+          chmod +x "$APP_DIR/AppRun"
+          cat > "$APP_DIR/Admin_Frontend.desktop" <<EOF
+          [Desktop Entry]
+          Name=Admin_Frontend
+          Exec=frontend
+          Icon=Admin_Frontend
+          Type=Application
+          Categories=Utility;
+          EOF
+          cp ./logo.png "$APP_DIR/Admin_Frontend.png"
+          ln -s "Admin_Frontend.png" "$APP_DIR/.DirIcon"
+          ./appimagetool-x86_64.AppImage "$APP_DIR" "./Admin_Frontend-x86_64.AppImage" || ./appimagetool-x86_64.AppImage --appimage-extract-and-run "$APP_DIR" "./Admin_Frontend-x86_64.AppImage"
+
+      - name: Upload Admin FrontEnd Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name_admin }}
+          path: ${{ matrix.artifact_path_admin }}
+
+  release:
+    name: Publish to GitHub Releases
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' # Publish on push (or manual)
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare Release Assets
+        run: |
+          mkdir -p release_assets
+          # Zip up macOS and Windows directories so they are easier to download
+          
+          if [ -d "artifacts/FrontEnd-Windows" ]; then zip -r release_assets/FrontEnd-Windows.zip artifacts/FrontEnd-Windows/*; fi
+          if [ -d "artifacts/Admin_Frontend-Windows" ]; then zip -r release_assets/Admin_Frontend-Windows.zip artifacts/Admin_Frontend-Windows/*; fi
+          
+          if [ -d "artifacts/FrontEnd-macOS" ]; then zip -r release_assets/FrontEnd-macOS.zip artifacts/FrontEnd-macOS/*; fi
+          if [ -d "artifacts/Admin_Frontend-macOS" ]; then zip -r release_assets/Admin_Frontend-macOS.zip artifacts/Admin_Frontend-macOS/*; fi
+          
+          # Move loose files (APK, AppImage) directly
+          find artifacts -type f \( -name "*.apk" -o -name "*.AppImage" \) -exec cp {} release_assets/ \;
+
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: "latest-build-${{ github.run_number }}"
+          name: "Development Build #${{ github.run_number }}"
+          draft: false
+          prerelease: true
+          files: release_assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

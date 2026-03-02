@@ -9,7 +9,7 @@ on:
 
 jobs:
   build_windows:
-    name: Build Windows App
+    name: Build Windows Apps
     runs-on: windows-latest
     steps:
       - name: Checkout Repository
@@ -50,7 +50,7 @@ jobs:
           path: ./admin_frontend/build/windows/x64/runner/Release
 
   build_macos:
-    name: Build macOS App
+    name: Build macOS Apps
     runs-on: macos-latest
     steps:
       - name: Checkout Repository

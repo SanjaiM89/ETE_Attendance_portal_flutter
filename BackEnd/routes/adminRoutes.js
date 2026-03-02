@@ -2,6 +2,7 @@
 const express = require("express");
 const {
   adminLogin,
+  verifyAdminMfa,
   createTeam,
   getAllTeams,
   updateAttendance,
@@ -13,6 +14,7 @@ const { authorize } = require("../middleware/roleMiddleware");
 const router = express.Router();
 
 router.post("/login", adminLogin);
+router.post("/verify-mfa", verifyAdminMfa);
 router.post("/create-team", authenticate, authorize(["admin"]), createTeam);
 router.get("/teams", authenticate, authorize(["admin"]), getAllTeams);
 router.put("/update-attendance/:teamId", authenticate, authorize(["admin"]), updateAttendance);

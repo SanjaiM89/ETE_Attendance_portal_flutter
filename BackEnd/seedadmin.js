@@ -27,7 +27,8 @@ async function createAdmin() {
     await Admin.create({
       name,
       email,
-      password: hashedPassword
+      password: hashedPassword,
+      mfaEnabled: false
     });
 
     console.log("\n🎉 Admin created successfully!");

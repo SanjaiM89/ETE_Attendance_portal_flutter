@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import 'package:go_router/go_router.dart';
 import '../services/api_service.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
+import '../utils/constants.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -15,11 +17,41 @@ class AdminDashboard extends StatefulWidget {
 class _AdminDashboardState extends State<AdminDashboard> {
   List<dynamic> teams = [];
   bool isLoading = true;
+  IO.Socket? socket;
 
   @override
   void initState() {
     super.initState();
     _fetchTeams();
+    _initSocket();
+  }
+
+  void _initSocket() {
+    socket = IO.io(Constants.baseUrl.replaceAll('/api', ''), <String, dynamic>{
+      'transports': ['websocket'],
+      'autoConnect': true,
+    });
+
+    socket!.onConnect((_) {
+      print('Admin websocket connected');
+    });
+
+    socket!.on('team_created', (_) {
+      // Reload teams when a new team is created
+      if (mounted) _fetchTeams();
+    });
+
+    socket!.on('team_updated', (data) {
+      // Reload teams when a team is updated to see latest attendance/judging
+      if (mounted) _fetchTeams();
+    });
+  }
+
+  @override
+  void dispose() {
+    socket?.disconnect();
+    socket?.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchTeams() async {
@@ -440,17 +472,37 @@ class _AdminDashboardState extends State<AdminDashboard> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        centerTitle: true,
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.admin_panel_settings),
-            const SizedBox(width: 8),
-            const Text('Admin Hub'),
+            Image.asset(
+              'assets/logo.png',
+              width: 32,
+              height: 32,
+              errorBuilder: (_, __, ___) => const Icon(Icons.admin_panel_settings, size: 28),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Admin Hub',
+              style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1),
+            ),
           ],
         ),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchTeams, tooltip: 'Reload Teams'),
-          IconButton(icon: const Icon(Icons.logout), onPressed: _logout, tooltip: 'Logout'),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              setState(() => isLoading = true);
+              _fetchTeams();
+            },
+            tooltip: 'Reload Teams',
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _logout,
+            tooltip: 'Logout',
+          ),
           const SizedBox(width: 8),
         ],
       ),

@@ -170,6 +170,8 @@ jobs:
     name: Publish to GitHub Releases
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' # Publish on push (or manual)
     steps:
       - name: Download all artifacts

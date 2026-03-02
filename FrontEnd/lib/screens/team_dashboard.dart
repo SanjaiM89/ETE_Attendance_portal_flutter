@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import 'package:go_router/go_router.dart';
 import '../services/api_service.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
+import '../utils/constants.dart';
 
 class TeamDashboard extends StatefulWidget {
   const TeamDashboard({super.key});
@@ -15,11 +17,40 @@ class TeamDashboard extends StatefulWidget {
 class _TeamDashboardState extends State<TeamDashboard> {
   Map<String, dynamic>? teamData;
   bool isLoading = true;
+  IO.Socket? socket;
 
   @override
   void initState() {
     super.initState();
     _fetchDashboard();
+    _initSocket();
+  }
+
+  void _initSocket() {
+    socket = IO.io(Constants.baseUrl.replaceAll('/api', ''), <String, dynamic>{
+      'transports': ['websocket'],
+      'autoConnect': true,
+    });
+
+    socket!.onConnect((_) {
+      print('connected to websocket');
+    });
+
+    socket!.on('team_updated', (data) {
+      if (mounted && teamData != null) {
+        if (data['teamId'] == teamData!['teamId']) {
+          // If this team was updated, fetch the latest data
+          _fetchDashboard();
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    socket?.disconnect();
+    socket?.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchDashboard() async {
@@ -64,27 +95,45 @@ class _TeamDashboardState extends State<TeamDashboard> {
 
     return Scaffold(
       appBar: AppBar(
+        centerTitle: true,
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.hub, size: 24),
+            Image.asset(
+              'assets/logo.png',
+              width: 32,
+              height: 32,
+              errorBuilder: (_, __, ___) => const Icon(Icons.hub, size: 28),
+            ),
             const SizedBox(width: 12),
-            Text("${teamData!['teamName']}"),
+            Text(
+              "${teamData!['teamName']}",
+              style: const TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1),
+            ),
           ],
         ),
         actions: [
-          Container(
-            alignment: Alignment.center,
-            margin: const EdgeInsets.only(right: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white24,
-              borderRadius: BorderRadius.circular(20),
+          if (MediaQuery.of(context).size.width > 600)
+            Container(
+              alignment: Alignment.center,
+              margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                "ID: ${teamData!['teamId']}",
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
-            child: Text(
-              "ID: ${teamData!['teamId']}",
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              setState(() => isLoading = true);
+              _fetchDashboard();
+            },
+            tooltip: 'Reload Dashboard',
           ),
           IconButton(
             icon: const Icon(Icons.logout),

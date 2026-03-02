@@ -19,6 +19,13 @@ const adminSchema = new mongoose.Schema(
     role: {
       type: String,
       default: "admin"
+    },
+    mfaSecret: {
+      type: String
+    },
+    mfaEnabled: {
+      type: Boolean,
+      default: false
     }
   },
   { timestamps: true }

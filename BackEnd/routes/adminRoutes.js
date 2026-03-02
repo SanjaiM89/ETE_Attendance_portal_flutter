@@ -6,7 +6,9 @@ const {
   createTeam,
   getAllTeams,
   updateAttendance,
-  updateJudging
+  updateJudging,
+  editTeam,
+  deleteTeam
 } = require("../controllers/adminController");
 const { authenticate } = require("../middleware/authMiddleware");
 const { authorize } = require("../middleware/roleMiddleware");
@@ -19,4 +21,7 @@ router.post("/create-team", authenticate, authorize(["admin"]), createTeam);
 router.get("/teams", authenticate, authorize(["admin"]), getAllTeams);
 router.put("/update-attendance/:teamId", authenticate, authorize(["admin"]), updateAttendance);
 router.put("/update-judging/:teamId", authenticate, authorize(["admin"]), updateJudging);
+router.put("/edit-team/:teamId", authenticate, authorize(["admin"]), editTeam);
+router.delete("/delete-team/:teamId", authenticate, authorize(["admin"]), deleteTeam);
+
 module.exports = router;

@@ -19,31 +19,31 @@ jobs:
         include:
           - os: windows-latest
             target: windows
-            artifact_name_frontend: FrontEnd-Windows
+            artifact_name_frontend: ETE-Windows
             artifact_path_frontend: ./FrontEnd/build/windows/x64/runner/Release
-            artifact_name_admin: Admin_Frontend-Windows
+            artifact_name_admin: ETE_ADMIN-Windows
             artifact_path_admin: ./admin_frontend/build/windows/x64/runner/Release
 
           - os: macos-latest
             target: macos
-            artifact_name_frontend: FrontEnd-macOS
+            artifact_name_frontend: ETE-macOS
             artifact_path_frontend: ./FrontEnd/build/macos/Build/Products/Release/frontend.app
-            artifact_name_admin: Admin_Frontend-macOS
+            artifact_name_admin: ETE_ADMIN-macOS
             artifact_path_admin: ./admin_frontend/build/macos/Build/Products/Release/frontend.app
 
           - os: ubuntu-latest
             target: android
-            artifact_name_frontend: FrontEnd-APK
-            artifact_path_frontend: ./FrontEnd/build/app/outputs/flutter-apk/app-release.apk
-            artifact_name_admin: Admin_Frontend-APK
-            artifact_path_admin: ./admin_frontend/build/app/outputs/flutter-apk/app-release.apk
+            artifact_name_frontend: ETE-APK
+            artifact_path_frontend: ./FrontEnd/build/app/outputs/flutter-apk/
+            artifact_name_admin: ETE_ADMIN-APK
+            artifact_path_admin: ./admin_frontend/build/app/outputs/flutter-apk/
 
           - os: ubuntu-latest
             target: linux
-            artifact_name_frontend: FrontEnd-Linux-AppImage
-            artifact_path_frontend: ./Student_Frontend-x86_64.AppImage
-            artifact_name_admin: Admin_Frontend-Linux-AppImage
-            artifact_path_admin: ./Admin_Frontend-x86_64.AppImage
+            artifact_name_frontend: ETE-Linux-AppImage
+            artifact_path_frontend: ./ETE-x86_64.AppImage
+            artifact_name_admin: ETE_ADMIN-Linux-AppImage
+            artifact_path_admin: ./ETE_ADMIN-x86_64.AppImage
 
     steps:
       - name: Checkout Repository
@@ -75,13 +75,17 @@ jobs:
           flutter config --enable-macos-desktop
           flutter config --enable-linux-desktop
 
+      # ── FrontEnd (ETE) ──────────────────────────────────────────────
       - name: Build FrontEnd (${{ matrix.target }})
         working-directory: ./FrontEnd
         run: |
           flutter create --platforms=${{ matrix.target }} .
           flutter pub get
+          dart run flutter_launcher_icons
           if [ "${{ matrix.target }}" == "android" ]; then
-            flutter build apk --release
+            # Inject app label
+            sed -i 's/android:label="[^"]*"/android:label="ETE"/' android/app/src/main/AndroidManifest.xml
+            flutter build apk --split-per-abi --release
           else
             flutter build ${{ matrix.target }} --release
           fi
@@ -90,8 +94,7 @@ jobs:
       - name: Construct FrontEnd AppImage
         if: matrix.target == 'linux'
         run: |
-          # The script we used earlier
-          APP_DIR="Student_Frontend.AppDir"
+          APP_DIR="ETE.AppDir"
           mkdir -p "$APP_DIR/usr/bin"
           mkdir -p "$APP_DIR/usr/share/applications"
           mkdir -p "$APP_DIR/usr/share/icons/hicolor/256x256/apps"
@@ -103,17 +106,17 @@ jobs:
           exec "\${HERE}/usr/bin/frontend" "\$@"
           EOF
           chmod +x "$APP_DIR/AppRun"
-          cat > "$APP_DIR/Student_Frontend.desktop" <<EOF
+          cat > "$APP_DIR/ETE.desktop" <<EOF
           [Desktop Entry]
-          Name=Student_Frontend
+          Name=ETE
           Exec=frontend
-          Icon=Student_Frontend
+          Icon=ETE
           Type=Application
           Categories=Utility;
           EOF
-          cp ./logo.png "$APP_DIR/Student_Frontend.png"
-          ln -sf "Student_Frontend.png" "$APP_DIR/.DirIcon"
-          ./appimagetool-x86_64.AppImage "$APP_DIR" "./Student_Frontend-x86_64.AppImage" || ./appimagetool-x86_64.AppImage --appimage-extract-and-run "$APP_DIR" "./Student_Frontend-x86_64.AppImage"
+          cp ./logo.png "$APP_DIR/ETE.png"
+          ln -sf "ETE.png" "$APP_DIR/.DirIcon"
+          ./appimagetool-x86_64.AppImage "$APP_DIR" "./ETE-x86_64.AppImage" || ./appimagetool-x86_64.AppImage --appimage-extract-and-run "$APP_DIR" "./ETE-x86_64.AppImage"
 
       - name: Upload FrontEnd Artifact
         uses: actions/upload-artifact@v4
@@ -121,13 +124,17 @@ jobs:
           name: ${{ matrix.artifact_name_frontend }}
           path: ${{ matrix.artifact_path_frontend }}
 
+      # ── Admin FrontEnd (ETE_ADMIN) ──────────────────────────────────
       - name: Build Admin FrontEnd (${{ matrix.target }})
         working-directory: ./admin_frontend
         run: |
           flutter create --platforms=${{ matrix.target }} .
           flutter pub get
+          dart run flutter_launcher_icons
           if [ "${{ matrix.target }}" == "android" ]; then
-            flutter build apk --release
+            # Inject app label
+            sed -i 's/android:label="[^"]*"/android:label="ETE_ADMIN"/' android/app/src/main/AndroidManifest.xml
+            flutter build apk --split-per-abi --release
           else
             flutter build ${{ matrix.target }} --release
           fi
@@ -136,7 +143,7 @@ jobs:
       - name: Construct Admin FrontEnd AppImage
         if: matrix.target == 'linux'
         run: |
-          APP_DIR="Admin_Frontend.AppDir"
+          APP_DIR="ETE_ADMIN.AppDir"
           mkdir -p "$APP_DIR/usr/bin"
           mkdir -p "$APP_DIR/usr/share/applications"
           mkdir -p "$APP_DIR/usr/share/icons/hicolor/256x256/apps"
@@ -148,17 +155,17 @@ jobs:
           exec "\${HERE}/usr/bin/frontend" "\$@"
           EOF
           chmod +x "$APP_DIR/AppRun"
-          cat > "$APP_DIR/Admin_Frontend.desktop" <<EOF
+          cat > "$APP_DIR/ETE_ADMIN.desktop" <<EOF
           [Desktop Entry]
-          Name=Admin_Frontend
+          Name=ETE_ADMIN
           Exec=frontend
-          Icon=Admin_Frontend
+          Icon=ETE_ADMIN
           Type=Application
           Categories=Utility;
           EOF
-          cp ./logo.png "$APP_DIR/Admin_Frontend.png"
-          ln -sf "Admin_Frontend.png" "$APP_DIR/.DirIcon"
-          ./appimagetool-x86_64.AppImage "$APP_DIR" "./Admin_Frontend-x86_64.AppImage" || ./appimagetool-x86_64.AppImage --appimage-extract-and-run "$APP_DIR" "./Admin_Frontend-x86_64.AppImage"
+          cp ./logo.png "$APP_DIR/ETE_ADMIN.png"
+          ln -sf "ETE_ADMIN.png" "$APP_DIR/.DirIcon"
+          ./appimagetool-x86_64.AppImage "$APP_DIR" "./ETE_ADMIN-x86_64.AppImage" || ./appimagetool-x86_64.AppImage --appimage-extract-and-run "$APP_DIR" "./ETE_ADMIN-x86_64.AppImage"
 
       - name: Upload Admin FrontEnd Artifact
         uses: actions/upload-artifact@v4
@@ -184,11 +191,11 @@ jobs:
           mkdir -p release_assets
           # Zip up macOS and Windows directories so they are easier to download
           
-          if [ -d "artifacts/FrontEnd-Windows" ]; then zip -r release_assets/FrontEnd-Windows.zip artifacts/FrontEnd-Windows/*; fi
-          if [ -d "artifacts/Admin_Frontend-Windows" ]; then zip -r release_assets/Admin_Frontend-Windows.zip artifacts/Admin_Frontend-Windows/*; fi
+          if [ -d "artifacts/ETE-Windows" ]; then zip -r release_assets/ETE-Windows.zip artifacts/ETE-Windows/*; fi
+          if [ -d "artifacts/ETE_ADMIN-Windows" ]; then zip -r release_assets/ETE_ADMIN-Windows.zip artifacts/ETE_ADMIN-Windows/*; fi
           
-          if [ -d "artifacts/FrontEnd-macOS" ]; then zip -r release_assets/FrontEnd-macOS.zip artifacts/FrontEnd-macOS/*; fi
-          if [ -d "artifacts/Admin_Frontend-macOS" ]; then zip -r release_assets/Admin_Frontend-macOS.zip artifacts/Admin_Frontend-macOS/*; fi
+          if [ -d "artifacts/ETE-macOS" ]; then zip -r release_assets/ETE-macOS.zip artifacts/ETE-macOS/*; fi
+          if [ -d "artifacts/ETE_ADMIN-macOS" ]; then zip -r release_assets/ETE_ADMIN-macOS.zip artifacts/ETE_ADMIN-macOS/*; fi
           
           # Move loose files (APK, AppImage) directly
           find artifacts -type f \( -name "*.apk" -o -name "*.AppImage" \) -exec cp {} release_assets/ \;

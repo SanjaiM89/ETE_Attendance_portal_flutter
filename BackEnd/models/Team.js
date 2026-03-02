@@ -2,7 +2,8 @@ const mongoose = require("mongoose");
 
 const memberSchema = new mongoose.Schema({
   name: String,
-  email: String,
+  email: { type: String, unique: true, sparse: true },
+  isLeader: { type: Boolean, default: false },
   attendance: {
     round1: { type: Boolean, default: false },
     round2: { type: Boolean, default: false },

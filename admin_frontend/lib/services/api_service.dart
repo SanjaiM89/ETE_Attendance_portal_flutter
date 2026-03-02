@@ -74,4 +74,33 @@ class ApiService {
     }
   }
 
+  // Admin: Edit Team
+  static Future<Map<String, dynamic>> editTeam(String teamId, String teamName, List<dynamic> members) async {
+    final response = await http.put(
+      Uri.parse('${Constants.baseUrl}/admin/edit-team/$teamId'),
+      headers: await _getHeaders(),
+      body: jsonEncode({
+        'teamName': teamName,
+        'members': members,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    }
+    throw Exception(jsonDecode(response.body)['message'] ?? 'Failed to edit team');
+  }
+
+  // Admin: Delete Team
+  static Future<void> deleteTeam(String teamId) async {
+    final response = await http.delete(
+      Uri.parse('${Constants.baseUrl}/admin/delete-team/$teamId'),
+      headers: await _getHeaders(),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(jsonDecode(response.body)['message'] ?? 'Failed to delete team');
+    }
+  }
+
 }

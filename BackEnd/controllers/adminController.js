@@ -2,12 +2,12 @@
 
 const Admin = require("../models/Admin");
 const Team = require("../models/Team");
+const speakeasy = require("speakeasy");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const speakeasy = require("speakeasy");
-const QRCode = require("qrcode");
 const { nanoid } = require("nanoid");
 const { sendTeamCredentialsEmail } = require("../utils/mail");
+const { generateQRWithLogo } = require("../utils/qrUtils");
 
 
 
@@ -31,7 +31,7 @@ exports.adminLogin = async (req, res) => {
     admin.mfaSecret = secret.base32;
     await admin.save();
 
-    const qrCode = await QRCode.toDataURL(secret.otpauth_url);
+    const qrCode = await generateQRWithLogo(secret.otpauth_url);
 
     return res.json({
       mfaRequired: true,
@@ -98,13 +98,22 @@ exports.createTeam = async (req, res) => {
       return res.status(400).json({ message: "Team name and members required" });
     }
 
-    // ✅ CHECK IF TEAM ALREADY EXISTS
+    // ✅ CHECK IF TEAM NAME ALREADY EXISTS
     const existingTeam = await Team.findOne({ teamName });
 
     if (existingTeam) {
       return res.status(400).json({
         message: "Team with this name already exists"
       });
+    }
+
+    // ✅ ENFORCE EMAIL UNIQUENESS
+    const emails = members.map(m => m.email).filter(e => e && e.trim() !== "");
+    if (emails.length > 0) {
+      const existingEmailTeam = await Team.findOne({ "members.email": { $in: emails } });
+      if (existingEmailTeam) {
+        return res.status(400).json({ message: "One or more email addresses are already registered to a team." });
+      }
     }
 
     const { nanoid } = await import("nanoid");
@@ -115,7 +124,7 @@ exports.createTeam = async (req, res) => {
       name: `Hackathon-${teamId}`
     });
 
-    const qrCode = await QRCode.toDataURL(secret.otpauth_url);
+    const qrCode = await generateQRWithLogo(secret.otpauth_url);
 
     const newTeam = await Team.create({
       teamId,
@@ -130,8 +139,10 @@ exports.createTeam = async (req, res) => {
       qrCode
     });
 
-    // Send emails asynchronously
-    sendTeamCredentialsEmail(teamName, teamId, qrCode, members);
+    // Send emails asynchronously only to leaders (or all if none marked)
+    const leaders = members.filter(m => m.isLeader);
+    const recipients = leaders.length > 0 ? leaders : members;
+    sendTeamCredentialsEmail(teamName, teamId, qrCode, recipients);
 
     // Broadcast team created event
     if (req.app.locals.io) {
@@ -195,4 +206,74 @@ exports.updateJudging = async (req, res) => {
   }
 
   res.json({ message: "Judging updated" });
+};
+
+// Edit Team Base info
+exports.editTeam = async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    const { teamName, members } = req.body;
+
+    if (!teamName || !members || members.length === 0) {
+      return res.status(400).json({ message: "Team name and members required" });
+    }
+
+    const team = await Team.findOne({ teamId });
+    if (!team) return res.status(404).json({ message: "Team not found" });
+
+    // Check name collision
+    if (teamName !== team.teamName) {
+      const existingTeam = await Team.findOne({ teamName });
+      if (existingTeam) {
+        return res.status(400).json({ message: "Team with this name already exists" });
+      }
+    }
+
+    // Check email collision
+    const emails = members.map(m => m.email).filter(e => e && e.trim() !== "");
+    if (emails.length > 0) {
+      const existingEmailTeam = await Team.findOne({
+        "members.email": { $in: emails },
+        teamId: { $ne: teamId }
+      });
+      if (existingEmailTeam) {
+        return res.status(400).json({ message: "One or more email addresses are already registered to another team." });
+      }
+    }
+
+    team.teamName = teamName;
+    team.members = members;
+    await team.save();
+
+    if (req.app.locals.io) {
+      req.app.locals.io.emit('team_updated', {
+        teamId: team.teamId,
+        type: 'members'
+      });
+    }
+
+    res.json({ message: "Team updated successfully", team });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Delete Team
+exports.deleteTeam = async (req, res) => {
+  try {
+    const { teamId } = req.params;
+
+    const team = await Team.findOneAndDelete({ teamId });
+    if (!team) return res.status(404).json({ message: "Team not found" });
+
+    if (req.app.locals.io) {
+      req.app.locals.io.emit('team_deleted', teamId);
+    }
+
+    res.json({ message: "Team deleted successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
 };

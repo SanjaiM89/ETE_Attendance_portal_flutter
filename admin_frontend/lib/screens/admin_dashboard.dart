@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../services/api_service.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import '../utils/constants.dart';
+import 'package:flutter/services.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -102,7 +103,24 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Theme.of(context).primaryColor.withOpacity(0.3)),
                 ),
-                child: Text('Team ID: $teamId', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor)),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Team ID: ', style: TextStyle(fontSize: 18, color: Colors.white70)),
+                    Text(teamId, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+                    const SizedBox(width: 12),
+                    IconButton(
+                      icon: const Icon(Icons.copy, size: 20),
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: teamId));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Team ID copied to clipboard!'), behavior: SnackBarBehavior.floating),
+                        );
+                      },
+                      tooltip: 'Copy Team ID',
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 24),
               Text('Share this QR code with the team to login via their Authenticator App:', textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color)),
@@ -158,6 +176,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     final nameController = TextEditingController();
     final memberNameControllers = [TextEditingController()];
     final memberEmailControllers = [TextEditingController()];
+    int leaderIndex = 0;
     bool isSubmitting = false;
 
     showDialog(
@@ -253,6 +272,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   final members = List.generate(memberNameControllers.length, (i) => {
                     'name': memberNameControllers[i].text,
                     'email': memberEmailControllers[i].text,
+                    'isLeader': i == leaderIndex
                   });
                   try {
                     final response = await ApiService.createTeam(nameController.text, members);
@@ -457,6 +477,189 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 ],
               ),
             ),
+            actions: [
+              TextButton.icon(
+                icon: const Icon(Icons.edit, color: Colors.blue),
+                label: const Text('Edit Team', style: TextStyle(color: Colors.blue)),
+                onPressed: () {
+                  Navigator.pop(context); // Close details
+                  _showEditTeamDialog(team); // Open edit modal
+                },
+              ),
+              TextButton.icon(
+                icon: const Icon(Icons.delete, color: Colors.red),
+                label: const Text('Delete Team', style: TextStyle(color: Colors.red)),
+                onPressed: () => _confirmDeleteTeam(team['teamId'], team['teamName']),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Close'),
+              ),
+            ],
+          );
+        }
+      ),
+    );
+  }
+
+  void _confirmDeleteTeam(String teamId, String teamName) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Team'),
+        content: Text("Are you sure you want to permanently delete team '$teamName'? This cannot be undone."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              try {
+                await ApiService.deleteTeam(teamId);
+                if (mounted) {
+                  Navigator.pop(context);
+                  _fetchTeams();
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Team deleted.')));
+                }
+              } catch (e) {
+                if (mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
+              }
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditTeamDialog(Map<String, dynamic> team) {
+    final nameController = TextEditingController(text: team['teamName']);
+    final initialMembers = List<dynamic>.from(team['members']);
+    
+    final memberNameControllers = initialMembers.map((m) => TextEditingController(text: m['name'])).toList();
+    final memberEmailControllers = initialMembers.map((m) => TextEditingController(text: m['email'])).toList();
+    
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            title: Text("Edit Team (ID: ${team['teamId']})"),
+            content: SizedBox(
+              width: 500,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(labelText: 'Team Name', prefixIcon: Icon(Icons.group)),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text('Members:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(height: 12),
+                    ...List.generate(memberNameControllers.length, (index) {
+                      return Padding(
+                         padding: const EdgeInsets.only(bottom: 12),
+                         child: Row(
+                           children: [
+                             Expanded(
+                               child: TextField(
+                                 controller: memberNameControllers[index],
+                                 decoration: InputDecoration(
+                                   labelText: 'Name ${index + 1}',
+                                   labelStyle: const TextStyle(fontSize: 14),
+                                   contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                                 ),
+                               ),
+                             ),
+                             const SizedBox(width: 8),
+                             Expanded(
+                               child: TextField(
+                                 controller: memberEmailControllers[index],
+                                 decoration: InputDecoration(
+                                   labelText: 'Email ${index + 1}',
+                                   labelStyle: const TextStyle(fontSize: 14),
+                                   contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                                 ),
+                               ),
+                             ),
+                             const SizedBox(width: 8),
+                             if (memberNameControllers.length > 1)
+                               IconButton(
+                                 icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
+                                 onPressed: () {
+                                   setStateDialog(() {
+                                     memberNameControllers.removeAt(index);
+                                     memberEmailControllers.removeAt(index);
+                                   });
+                                 },
+                               )
+                             else 
+                               const SizedBox(width: 48), // Spacer to align fields properly
+                           ],
+                         ),
+                      );
+                    }),
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Another Member'),
+                      onPressed: () {
+                        setStateDialog(() {
+                          memberNameControllers.add(TextEditingController());
+                          memberEmailControllers.add(TextEditingController());
+                        });
+                      },
+                    )
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSubmitting ? null : () => Navigator.pop(context), 
+                child: const Text('Cancel')
+              ),
+              ElevatedButton(
+                onPressed: isSubmitting ? null : () async {
+                  if (nameController.text.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Team name is required')));
+                    return;
+                  }
+                  
+                  setStateDialog(() => isSubmitting = true);
+                  final members = List.generate(memberNameControllers.length, (i) => {
+                    'name': memberNameControllers[i].text,
+                    'email': memberEmailControllers[i].text,
+                  });
+                  
+                  try {
+                    await ApiService.editTeam(team['teamId'], nameController.text, members);
+                    if (mounted) {
+                      Navigator.pop(context); // Close edit form
+                      _fetchTeams(); // refresh list
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Team updated successfully')));
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      setStateDialog(() => isSubmitting = false);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: Colors.redAccent),
+                      );
+                    }
+                  }
+                },
+                child: isSubmitting 
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text('Save Changes'),
+              )
+            ],
           );
         }
       ),

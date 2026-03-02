@@ -2,9 +2,9 @@ name: Desktop Builds (Windows & macOS)
 
 on:
   push:
-    branches: [ "master", "main" ]
+    branches: [ "master", "main", "flutter" ]
   pull_request:
-    branches: [ "master", "main" ]
+    branches: [ "master", "main", "flutter" ]
   workflow_dispatch: # Allow manual trigger
 
 jobs:

@@ -7,6 +7,7 @@ const jwt = require("jsonwebtoken");
 const speakeasy = require("speakeasy");
 const QRCode = require("qrcode");
 const { nanoid } = require("nanoid");
+const { sendTeamCredentialsEmail } = require("../utils/mail");
 
 
 
@@ -128,6 +129,9 @@ exports.createTeam = async (req, res) => {
       teamId,
       qrCode
     });
+
+    // Send emails asynchronously
+    sendTeamCredentialsEmail(teamName, teamId, qrCode, members);
 
     // Broadcast team created event
     if (req.app.locals.io) {

@@ -87,13 +87,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
             children: [
               const Icon(Icons.check_circle, color: Colors.green),
               const SizedBox(width: 12),
-              const Text('Team Created!'),
+              Text('Team Created!', style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color)),
             ],
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Team \'\$teamName\' was successfully registered.', style: const TextStyle(fontSize: 16)),
+              Text("Team '$teamName' was successfully registered.", style: TextStyle(fontSize: 16, color: Theme.of(context).textTheme.bodyLarge?.color)),
               const SizedBox(height: 24),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -105,7 +105,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 child: Text('Team ID: $teamId', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor)),
               ),
               const SizedBox(height: 24),
-              const Text('Share this QR code with the team to login via their Authenticator App:', textAlign: TextAlign.center),
+              Text('Share this QR code with the team to login via their Authenticator App:', textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color)),
               const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.all(16),

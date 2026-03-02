@@ -2,11 +2,32 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/foundation.dart';
 import 'providers/auth_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/admin_dashboard.dart';
+import 'package:window_manager/window_manager.dart';
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
 
-void main() {
+  if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.windows || 
+                  defaultTargetPlatform == TargetPlatform.linux || 
+                  defaultTargetPlatform == TargetPlatform.macOS)) {
+    await windowManager.ensureInitialized();
+
+    WindowOptions windowOptions = const WindowOptions(
+      size: Size(1280, 720),
+      center: true,
+      backgroundColor: Colors.transparent,
+      skipTaskbar: false,
+      titleBarStyle: TitleBarStyle.hidden,
+    );
+    windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
+  }
+
   runApp(
     MultiProvider(
       providers: [
@@ -109,6 +130,79 @@ class AdminApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
+      builder: (context, child) {
+        if (kIsWeb || (defaultTargetPlatform != TargetPlatform.windows && 
+                       defaultTargetPlatform != TargetPlatform.linux && 
+                       defaultTargetPlatform != TargetPlatform.macOS)) {
+          return child ?? const SizedBox();
+        }
+
+        return Stack(
+          children: [
+            if (child != null) child,
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 120,
+              height: 40,
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onPanStart: (details) {
+                  windowManager.startDragging();
+                },
+                onDoubleTap: () async {
+                  if (await windowManager.isMaximized()) {
+                    windowManager.unmaximize();
+                  } else {
+                    windowManager.maximize();
+                  }
+                },
+              ),
+            ),
+            Positioned(
+              top: 12,
+              right: 16,
+              child: Material(
+                color: Colors.transparent,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () => windowManager.minimize(),
+                        child: const Icon(Icons.minimize, color: Colors.white, size: 24),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () async {
+                          if (await windowManager.isMaximized()) {
+                            windowManager.unmaximize();
+                          } else {
+                            windowManager.maximize();
+                          }
+                        },
+                        child: const Icon(Icons.crop_square, color: Colors.white, size: 24),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () => windowManager.close(),
+                        child: const Icon(Icons.close, color: Colors.white, size: 24),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
       routerConfig: router,
     );
   }

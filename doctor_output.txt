@@ -1,0 +1,17 @@
+Doctor summary (to see all details, run flutter doctor -v):
+[✓] Flutter (Channel stable, 3.41.2, on CachyOS 6.19.5-3-cachyos, locale en_US.UTF-8)
+[✗] Android toolchain - develop for Android devices
+    ✗ Unable to locate Android SDK.
+      Install Android Studio from: https://developer.android.com/studio/index.html
+      On first launch it will assist you in installing the Android SDK components.
+      (or visit https://flutter.dev/to/linux-android-setup for detailed instructions).
+      If the Android SDK has been installed to a custom location, please use
+      `flutter config --android-sdk` to update to that location.
+
+[✗] Chrome - develop for the web (Cannot find Chrome executable at google-chrome)
+    ! Cannot find Chrome. Try setting CHROME_EXECUTABLE to a Chrome executable.
+[✓] Linux toolchain - develop for Linux desktop
+[✓] Connected device (1 available)
+[✓] Network resources
+
+! Doctor found issues in 2 categories.

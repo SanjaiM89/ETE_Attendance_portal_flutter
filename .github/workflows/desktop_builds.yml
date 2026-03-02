@@ -1,0 +1,91 @@
+name: Desktop Builds (Windows & macOS)
+
+on:
+  push:
+    branches: [ "master", "main" ]
+  pull_request:
+    branches: [ "master", "main" ]
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  build_windows:
+    name: Build Windows App
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Enable Windows Desktop in Flutter
+        run: flutter config --enable-windows-desktop
+
+      - name: Build FrontEnd (Windows)
+        working-directory: ./FrontEnd
+        run: |
+          flutter create --platforms=windows .
+          flutter pub get
+          flutter build windows --release
+
+      - name: Upload FrontEnd Windows Release
+        uses: actions/upload-artifact@v4
+        with:
+          name: FrontEnd-Windows
+          path: ./FrontEnd/build/windows/x64/runner/Release
+
+      - name: Build Admin FrontEnd (Windows)
+        working-directory: ./admin_frontend
+        run: |
+          flutter create --platforms=windows .
+          flutter pub get
+          flutter build windows --release
+
+      - name: Upload Admin FrontEnd Windows Release
+        uses: actions/upload-artifact@v4
+        with:
+          name: Admin_Frontend-Windows
+          path: ./admin_frontend/build/windows/x64/runner/Release
+
+  build_macos:
+    name: Build macOS App
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Enable macOS Desktop in Flutter
+        run: flutter config --enable-macos-desktop
+
+      - name: Build FrontEnd (macOS)
+        working-directory: ./FrontEnd
+        run: |
+          flutter create --platforms=macos .
+          flutter pub get
+          flutter build macos --release
+
+      - name: Upload FrontEnd macOS Release
+        uses: actions/upload-artifact@v4
+        with:
+          name: FrontEnd-macOS
+          path: ./FrontEnd/build/macos/Build/Products/Release/frontend.app
+
+      - name: Build Admin FrontEnd (macOS)
+        working-directory: ./admin_frontend
+        run: |
+          flutter create --platforms=macos .
+          flutter pub get
+          flutter build macos --release
+
+      - name: Upload Admin FrontEnd macOS Release
+        uses: actions/upload-artifact@v4
+        with:
+          name: Admin_Frontend-macOS
+          path: ./admin_frontend/build/macos/Build/Products/Release/frontend.app

@@ -112,7 +112,7 @@ jobs:
           Categories=Utility;
           EOF
           cp ./logo.png "$APP_DIR/Student_Frontend.png"
-          ln -s "Student_Frontend.png" "$APP_DIR/.DirIcon"
+          ln -sf "Student_Frontend.png" "$APP_DIR/.DirIcon"
           ./appimagetool-x86_64.AppImage "$APP_DIR" "./Student_Frontend-x86_64.AppImage" || ./appimagetool-x86_64.AppImage --appimage-extract-and-run "$APP_DIR" "./Student_Frontend-x86_64.AppImage"
 
       - name: Upload FrontEnd Artifact
@@ -157,7 +157,7 @@ jobs:
           Categories=Utility;
           EOF
           cp ./logo.png "$APP_DIR/Admin_Frontend.png"
-          ln -s "Admin_Frontend.png" "$APP_DIR/.DirIcon"
+          ln -sf "Admin_Frontend.png" "$APP_DIR/.DirIcon"
           ./appimagetool-x86_64.AppImage "$APP_DIR" "./Admin_Frontend-x86_64.AppImage" || ./appimagetool-x86_64.AppImage --appimage-extract-and-run "$APP_DIR" "./Admin_Frontend-x86_64.AppImage"
 
       - name: Upload Admin FrontEnd Artifact

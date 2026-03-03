@@ -222,9 +222,9 @@ jobs:
           if [ -d "artifacts/ETE-iOS" ]; then zip -r release_assets/ETE-iOS.zip artifacts/ETE-iOS/*; fi
           if [ -d "artifacts/ETE_ADMIN-iOS" ]; then zip -r release_assets/ETE_ADMIN-iOS.zip artifacts/ETE_ADMIN-iOS/*; fi
           
-          # Android APKs: explicitly rename and move them so they don't overwrite each other
-          if ls artifacts/ETE-APK/*.apk 1> /dev/null 2>&1; then cp artifacts/ETE-APK/app-*-release.apk release_assets/ETE-Android.apk || cp artifacts/ETE-APK/*.apk release_assets/ETE-Android.apk; fi
-          if ls artifacts/ETE_ADMIN-APK/*.apk 1> /dev/null 2>&1; then cp artifacts/ETE_ADMIN-APK/app-*-release.apk release_assets/ETE_ADMIN-Android.apk || cp artifacts/ETE_ADMIN-APK/*.apk release_assets/ETE_ADMIN-Android.apk; fi
+          # Android APKs: Since there are multiple APKs per app (split by ABI), we loop and copy them with a clear prefix
+          if ls artifacts/ETE-APK/*.apk 1> /dev/null 2>&1; then for file in artifacts/ETE-APK/*.apk; do cp "$file" "release_assets/ETE-$(basename "$file")"; done; fi
+          if ls artifacts/ETE_ADMIN-APK/*.apk 1> /dev/null 2>&1; then for file in artifacts/ETE_ADMIN-APK/*.apk; do cp "$file" "release_assets/ETE_ADMIN-$(basename "$file")"; done; fi
 
           # Linux AppImages: explicitly rename and move them
           if ls artifacts/ETE-Linux-AppImage/*.AppImage 1> /dev/null 2>&1; then cp artifacts/ETE-Linux-AppImage/*.AppImage release_assets/ETE-Linux.AppImage; fi

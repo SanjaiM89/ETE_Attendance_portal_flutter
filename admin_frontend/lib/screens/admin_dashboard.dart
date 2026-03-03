@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import 'package:go_router/go_router.dart';
@@ -706,7 +707,10 @@ class _AdminDashboardState extends State<AdminDashboard> {
             onPressed: _logout,
             tooltip: 'Logout',
           ),
-          const SizedBox(width: 8),
+          if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux || defaultTargetPlatform == TargetPlatform.macOS))
+            const SizedBox(width: 140)
+          else
+            const SizedBox(width: 8),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(

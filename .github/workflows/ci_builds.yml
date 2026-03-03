@@ -20,9 +20,9 @@ jobs:
           - os: windows-latest
             target: windows
             artifact_name_frontend: ETE-Windows
-            artifact_path_frontend: ./FrontEnd/build/windows/x64/runner/Release
+            artifact_path_frontend: ./FrontEnd/build/windows/x64/runner/Release/frontend.exe
             artifact_name_admin: ETE_ADMIN-Windows
-            artifact_path_admin: ./admin_frontend/build/windows/x64/runner/Release
+            artifact_path_admin: ./admin_frontend/build/windows/x64/runner/Release/frontend.exe
 
           - os: macos-latest
             target: macos
@@ -211,19 +211,15 @@ jobs:
       - name: Prepare Release Assets
         run: |
           mkdir -p release_assets
-          # Zip up macOS, iOS, and Windows directories so they are easier to download
-          
-          if [ -d "artifacts/ETE-Windows" ]; then zip -r release_assets/ETE-Windows.zip artifacts/ETE-Windows/*; fi
-          if [ -d "artifacts/ETE_ADMIN-Windows" ]; then zip -r release_assets/ETE_ADMIN-Windows.zip artifacts/ETE_ADMIN-Windows/*; fi
-          
-          if [ -d "artifacts/ETE-macOS" ]; then zip -r release_assets/ETE-macOS.zip artifacts/ETE-macOS/*; fi
-          if [ -d "artifacts/ETE_ADMIN-macOS" ]; then zip -r release_assets/ETE_ADMIN-macOS.zip artifacts/ETE_ADMIN-macOS/*; fi
+          # macOS and iOS apps are actually directories (.app bundle), so they MUST be zipped to be downloadable/uploaded
+          if [ -d "artifacts/ETE-macOS" ]; then mv artifacts/ETE-macOS/frontend.app artifacts/ETE-macOS/ETE.app; zip -r release_assets/ETE-macOS.zip artifacts/ETE-macOS/ETE.app; fi
+          if [ -d "artifacts/ETE_ADMIN-macOS" ]; then mv artifacts/ETE_ADMIN-macOS/frontend.app artifacts/ETE_ADMIN-macOS/ETE_ADMIN.app; zip -r release_assets/ETE_ADMIN-macOS.zip artifacts/ETE_ADMIN-macOS/ETE_ADMIN.app; fi
           
           if [ -d "artifacts/ETE-iOS" ]; then zip -r release_assets/ETE-iOS.zip artifacts/ETE-iOS/*; fi
           if [ -d "artifacts/ETE_ADMIN-iOS" ]; then zip -r release_assets/ETE_ADMIN-iOS.zip artifacts/ETE_ADMIN-iOS/*; fi
           
-          # Move loose files (APK, AppImage) directly
-          find artifacts -type f \( -name "*.apk" -o -name "*.AppImage" \) -exec cp {} release_assets/ \;
+          # Move loose files (Windows .exe, Android APK, Linux AppImage) directly without zipping
+          find artifacts -type f \( -name "*.exe" -o -name "*.apk" -o -name "*.AppImage" \) -exec cp {} release_assets/ \;
 
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v1

@@ -212,8 +212,8 @@ jobs:
         run: |
           mkdir -p release_assets
           # macOS and iOS apps are actually directories (.app bundle), so they MUST be zipped to be downloadable/uploaded
-          if [ -d "artifacts/ETE-macOS" ]; then mv artifacts/ETE-macOS/frontend.app artifacts/ETE-macOS/ETE.app; zip -r release_assets/ETE-macOS.zip artifacts/ETE-macOS/ETE.app; fi
-          if [ -d "artifacts/ETE_ADMIN-macOS" ]; then mv artifacts/ETE_ADMIN-macOS/frontend.app artifacts/ETE_ADMIN-macOS/ETE_ADMIN.app; zip -r release_assets/ETE_ADMIN-macOS.zip artifacts/ETE_ADMIN-macOS/ETE_ADMIN.app; fi
+          if [ -d "artifacts/ETE-macOS" ]; then mv artifacts/ETE-macOS release_assets/ETE.app; cd release_assets; zip -r ETE-macOS.zip ETE.app; rm -rf ETE.app; cd ..; fi
+          if [ -d "artifacts/ETE_ADMIN-macOS" ]; then mv artifacts/ETE_ADMIN-macOS release_assets/ETE_ADMIN.app; cd release_assets; zip -r ETE_ADMIN-macOS.zip ETE_ADMIN.app; rm -rf ETE_ADMIN.app; cd ..; fi
           
           if [ -d "artifacts/ETE-iOS" ]; then zip -r release_assets/ETE-iOS.zip artifacts/ETE-iOS/*; fi
           if [ -d "artifacts/ETE_ADMIN-iOS" ]; then zip -r release_assets/ETE_ADMIN-iOS.zip artifacts/ETE_ADMIN-iOS/*; fi

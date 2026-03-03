@@ -88,12 +88,13 @@ jobs:
         working-directory: ./FrontEnd
         run: |
           flutter create --platforms=${{ matrix.target }} .
-          flutter pub get
-          # Enable iOS icon generation only on macOS runners
+          # Create all platform dirs so flutter_launcher_icons can generate all icons
+          flutter create --platforms=android . 2>/dev/null || true
           if [ "${{ runner.os }}" == "macOS" ]; then
             flutter create --platforms=ios . 2>/dev/null || true
             sed -i '' 's/ios: false/ios: true/' pubspec.yaml
           fi
+          flutter pub get
           dart run flutter_launcher_icons
           if [ "${{ matrix.target }}" == "android" ]; then
             sed -i 's/android:label="[^"]*"/android:label="ETE"/' android/app/src/main/AndroidManifest.xml
@@ -143,12 +144,13 @@ jobs:
         working-directory: ./admin_frontend
         run: |
           flutter create --platforms=${{ matrix.target }} .
-          flutter pub get
-          # Enable iOS icon generation only on macOS runners
+          # Create all platform dirs so flutter_launcher_icons can generate all icons
+          flutter create --platforms=android . 2>/dev/null || true
           if [ "${{ runner.os }}" == "macOS" ]; then
             flutter create --platforms=ios . 2>/dev/null || true
             sed -i '' 's/ios: false/ios: true/' pubspec.yaml
           fi
+          flutter pub get
           dart run flutter_launcher_icons
           if [ "${{ matrix.target }}" == "android" ]; then
             sed -i 's/android:label="[^"]*"/android:label="ETE_ADMIN"/' android/app/src/main/AndroidManifest.xml

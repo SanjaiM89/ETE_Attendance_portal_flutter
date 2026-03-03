@@ -1,4 +1,4 @@
-name: Cross-Platform Builds (Windows, macOS, Android, Linux)
+name: Cross-Platform Builds (Windows, macOS, iOS, Android, Linux)
 
 on:
   push:
@@ -30,6 +30,13 @@ jobs:
             artifact_path_frontend: ./FrontEnd/build/macos/Build/Products/Release/frontend.app
             artifact_name_admin: ETE_ADMIN-macOS
             artifact_path_admin: ./admin_frontend/build/macos/Build/Products/Release/frontend.app
+
+          - os: macos-latest
+            target: ios
+            artifact_name_frontend: ETE-iOS
+            artifact_path_frontend: ./FrontEnd/build/ios/iphoneos/
+            artifact_name_admin: ETE_ADMIN-iOS
+            artifact_path_admin: ./admin_frontend/build/ios/iphoneos/
 
           - os: ubuntu-latest
             target: android
@@ -70,6 +77,7 @@ jobs:
           chmod +x appimagetool-x86_64.AppImage
 
       - name: Enable Desktop Configurations
+        if: matrix.target != 'android' && matrix.target != 'ios'
         run: |
           flutter config --enable-windows-desktop
           flutter config --enable-macos-desktop
@@ -81,11 +89,17 @@ jobs:
         run: |
           flutter create --platforms=${{ matrix.target }} .
           flutter pub get
+          # Enable iOS icon generation only on macOS runners
+          if [ "${{ runner.os }}" == "macOS" ]; then
+            flutter create --platforms=ios . 2>/dev/null || true
+            sed -i '' 's/ios: false/ios: true/' pubspec.yaml
+          fi
           dart run flutter_launcher_icons
           if [ "${{ matrix.target }}" == "android" ]; then
-            # Inject app label
             sed -i 's/android:label="[^"]*"/android:label="ETE"/' android/app/src/main/AndroidManifest.xml
             flutter build apk --split-per-abi --release
+          elif [ "${{ matrix.target }}" == "ios" ]; then
+            flutter build ios --release --no-codesign
           else
             flutter build ${{ matrix.target }} --release
           fi
@@ -130,11 +144,17 @@ jobs:
         run: |
           flutter create --platforms=${{ matrix.target }} .
           flutter pub get
+          # Enable iOS icon generation only on macOS runners
+          if [ "${{ runner.os }}" == "macOS" ]; then
+            flutter create --platforms=ios . 2>/dev/null || true
+            sed -i '' 's/ios: false/ios: true/' pubspec.yaml
+          fi
           dart run flutter_launcher_icons
           if [ "${{ matrix.target }}" == "android" ]; then
-            # Inject app label
             sed -i 's/android:label="[^"]*"/android:label="ETE_ADMIN"/' android/app/src/main/AndroidManifest.xml
             flutter build apk --split-per-abi --release
+          elif [ "${{ matrix.target }}" == "ios" ]; then
+            flutter build ios --release --no-codesign
           else
             flutter build ${{ matrix.target }} --release
           fi
@@ -189,13 +209,16 @@ jobs:
       - name: Prepare Release Assets
         run: |
           mkdir -p release_assets
-          # Zip up macOS and Windows directories so they are easier to download
+          # Zip up macOS, iOS, and Windows directories so they are easier to download
           
           if [ -d "artifacts/ETE-Windows" ]; then zip -r release_assets/ETE-Windows.zip artifacts/ETE-Windows/*; fi
           if [ -d "artifacts/ETE_ADMIN-Windows" ]; then zip -r release_assets/ETE_ADMIN-Windows.zip artifacts/ETE_ADMIN-Windows/*; fi
           
           if [ -d "artifacts/ETE-macOS" ]; then zip -r release_assets/ETE-macOS.zip artifacts/ETE-macOS/*; fi
           if [ -d "artifacts/ETE_ADMIN-macOS" ]; then zip -r release_assets/ETE_ADMIN-macOS.zip artifacts/ETE_ADMIN-macOS/*; fi
+          
+          if [ -d "artifacts/ETE-iOS" ]; then zip -r release_assets/ETE-iOS.zip artifacts/ETE-iOS/*; fi
+          if [ -d "artifacts/ETE_ADMIN-iOS" ]; then zip -r release_assets/ETE_ADMIN-iOS.zip artifacts/ETE_ADMIN-iOS/*; fi
           
           # Move loose files (APK, AppImage) directly
           find artifacts -type f \( -name "*.apk" -o -name "*.AppImage" \) -exec cp {} release_assets/ \;

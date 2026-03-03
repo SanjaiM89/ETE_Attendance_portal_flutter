@@ -5,7 +5,6 @@ const Team = require("../models/Team");
 const speakeasy = require("speakeasy");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { nanoid } = require("nanoid");
 const { sendTeamCredentialsEmail } = require("../utils/mail");
 const { generateQRWithLogo } = require("../utils/qrUtils");
 

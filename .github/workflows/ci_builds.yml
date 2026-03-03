@@ -20,9 +20,9 @@ jobs:
           - os: windows-latest
             target: windows
             artifact_name_frontend: ETE-Windows
-            artifact_path_frontend: ./FrontEnd/build/windows/x64/runner/Release/frontend.exe
+            artifact_path_frontend: ./FrontEnd/build/windows/x64/runner/Release
             artifact_name_admin: ETE_ADMIN-Windows
-            artifact_path_admin: ./admin_frontend/build/windows/x64/runner/Release/frontend.exe
+            artifact_path_admin: ./admin_frontend/build/windows/x64/runner/Release
 
           - os: macos-latest
             target: macos
@@ -211,6 +211,10 @@ jobs:
       - name: Prepare Release Assets
         run: |
           mkdir -p release_assets
+          # Windows Flutter apps require the whole Release directory to run, so they must be zipped
+          if [ -d "artifacts/ETE-Windows" ]; then zip -r release_assets/ETE-Windows.zip artifacts/ETE-Windows/*; fi
+          if [ -d "artifacts/ETE_ADMIN-Windows" ]; then zip -r release_assets/ETE_ADMIN-Windows.zip artifacts/ETE_ADMIN-Windows/*; fi
+          
           # macOS and iOS apps are actually directories (.app bundle), so they MUST be zipped to be downloadable/uploaded
           if [ -d "artifacts/ETE-macOS" ]; then mv artifacts/ETE-macOS release_assets/ETE.app; cd release_assets; zip -r ETE-macOS.zip ETE.app; rm -rf ETE.app; cd ..; fi
           if [ -d "artifacts/ETE_ADMIN-macOS" ]; then mv artifacts/ETE_ADMIN-macOS release_assets/ETE_ADMIN.app; cd release_assets; zip -r ETE_ADMIN-macOS.zip ETE_ADMIN.app; rm -rf ETE_ADMIN.app; cd ..; fi
@@ -218,8 +222,13 @@ jobs:
           if [ -d "artifacts/ETE-iOS" ]; then zip -r release_assets/ETE-iOS.zip artifacts/ETE-iOS/*; fi
           if [ -d "artifacts/ETE_ADMIN-iOS" ]; then zip -r release_assets/ETE_ADMIN-iOS.zip artifacts/ETE_ADMIN-iOS/*; fi
           
-          # Move loose files (Windows .exe, Android APK, Linux AppImage) directly without zipping
-          find artifacts -type f \( -name "*.exe" -o -name "*.apk" -o -name "*.AppImage" \) -exec cp {} release_assets/ \;
+          # Android APKs: explicitly rename and move them so they don't overwrite each other
+          if ls artifacts/ETE-APK/*.apk 1> /dev/null 2>&1; then cp artifacts/ETE-APK/app-*-release.apk release_assets/ETE-Android.apk || cp artifacts/ETE-APK/*.apk release_assets/ETE-Android.apk; fi
+          if ls artifacts/ETE_ADMIN-APK/*.apk 1> /dev/null 2>&1; then cp artifacts/ETE_ADMIN-APK/app-*-release.apk release_assets/ETE_ADMIN-Android.apk || cp artifacts/ETE_ADMIN-APK/*.apk release_assets/ETE_ADMIN-Android.apk; fi
+
+          # Linux AppImages: explicitly rename and move them
+          if ls artifacts/ETE-Linux-AppImage/*.AppImage 1> /dev/null 2>&1; then cp artifacts/ETE-Linux-AppImage/*.AppImage release_assets/ETE-Linux.AppImage; fi
+          if ls artifacts/ETE_ADMIN-Linux-AppImage/*.AppImage 1> /dev/null 2>&1; then cp artifacts/ETE_ADMIN-Linux-AppImage/*.AppImage release_assets/ETE_ADMIN-Linux.AppImage; fi
 
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v1
